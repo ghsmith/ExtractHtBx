@@ -24,7 +24,7 @@ import javax.xml.transform.stream.StreamResult;
 public class HeartBxPatients {
 
     @XmlElement(name = "patient")
-    Set<Patient> patients = new TreeSet<>();
+    public Set<Patient> patients = new TreeSet<>();
 
     public HeartBxPatients() {
     }

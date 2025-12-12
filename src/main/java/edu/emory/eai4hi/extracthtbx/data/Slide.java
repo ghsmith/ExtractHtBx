@@ -18,6 +18,8 @@ public class Slide implements Comparable {
     public Integer slideNo;
     @XmlAttribute
     public String stain;
+    @XmlAttribute
+    public String anonSlideId;
 
     @Override
     public int compareTo(Object o) {

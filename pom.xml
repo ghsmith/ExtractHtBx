@@ -16,6 +16,11 @@
             <artifactId>mssql-jdbc</artifactId>
             <version>6.4.0.jre8</version>
         </dependency>
+        <dependency>
+            <groupId>org.json</groupId>
+            <artifactId>json</artifactId>
+            <version>20240303</version>
+        </dependency>
         <!-- JAXB API -->
         <dependency>
             <groupId>jakarta.xml.bind</groupId>
