@@ -37,7 +37,7 @@ public class DownloadSvsFilesFromSectraUtil {
     
     public static void main(String[] args) throws Exception {
 
-        HeartBxPatients heartBxPatients = HeartBxPatients.xmlUnmarshal("c:\\heart_bx\\heart_bx");
+        HeartBxPatients heartBxPatients = HeartBxPatients.xmlUnmarshal("heart_bx");
         
         boolean anon = true;
         
@@ -127,7 +127,7 @@ public class DownloadSvsFilesFromSectraUtil {
             if(uniViewHistoryItemIdentifier == null ) {
                 System.out.println(String.format("examination \"%s\" not found", accNo));
                 logout(url, client);
-                System.exit(1);
+                continue;
             }
 
             // INITIALIZE PATHOLOGY SESSION
@@ -158,57 +158,67 @@ public class DownloadSvsFilesFromSectraUtil {
                 for(Iterator iterSlides = joSlides.getJSONArray("slides").iterator(); iterSlides.hasNext(); ) {
                     JSONObject slideJson = (JSONObject)iterSlides.next();
                     if(slideJson.get("labSlideIdString").equals(slideId) && slideJson.getBoolean("hasImage")) {
-                        slideFound = true;
-                        HttpRequest requestDetails = HttpRequest.newBuilder()
-                          .uri(URI.create(String.format(url + "/SectraPathologyServer/api/slides/%s/details", slideJson.getString("id"))))
-                          .setHeader("content-type", "application/x-www-form-urlencoded; charset=UTF-8")
-                          .GET()
-                          .build();
-                        HttpResponse<String> responseDetails = client.send(requestDetails, HttpResponse.BodyHandlers.ofString());
-                        JSONObject joDetails = new JSONObject(responseDetails.body());
-                        System.out.println("slide found");
-                        System.out.println(String.format("%s\t%s\t%s\t%s",
+                        System.out.println(String.format("%s\t%s\t%s\t%s\t%s\t%s",
                             slideJson.getString("requestIdString"),
                             slideJson.getString("labSlideIdString"),
                             slideJson.getString("staining"),
-                            joDetails.getString("scanDateTime")
+                            slideJson.getString("scanDateTime"),
+                            slideJson.getBoolean("isViewable"),
+                            slideJson.isNull("archived") ? null : slideJson.getString("archived")
                         ));
-                        System.out.println(String.format(url + "/SectraPathologyServer/slides/%s/files?requestId=%s&anonymize=%s", slideJson.getString("id"), accNo, anon ? "true" : "false"));
-                        System.out.print(String.format("%-25s", "downloading ZIP..."));
-                        HttpRequest requestDownload = HttpRequest.newBuilder()
-                          .uri(URI.create(String.format(url + "/SectraPathologyServer/slides/%s/files?requestId=%s&anonymize=%s", slideJson.getString("id"), accNo, anon ? "true" : "false")))
-                          .build();
-                        HttpResponse<Path> responseDownload = client.send(requestDownload, HttpResponse.BodyHandlers.ofFileDownload(
-                            Path.of("."), 
-                            StandardOpenOption.WRITE,
-                            StandardOpenOption.CREATE
-                        ));
-                        System.out.println(String.format("downloaded to: %s", responseDownload.body().getFileName()));
-                        ZipFile zipFile = new ZipFile(responseDownload.body().toFile());
-                        for(Iterator iterZipEntries = zipFile.entries().asIterator(); iterZipEntries.hasNext(); ) {
-                            ZipEntry zipEntry = (ZipEntry)iterZipEntries.next();
-                            if(zipEntry.getName().endsWith(".svs")) {
-                                String anonId = responseDownload.body().getFileName().toString().replaceAll(".zip$", "").replaceAll("^ANON", "");
-                                String svsFileName = String.format("%s-%s-%s%02d-%02d-%s-%s.svs", patient.patIdHash.substring(0, 8), sdf.format(case_.collectionDate), slide.partId, slide.blockNo, slide.slideNo, slide.stain.replace(" ", "_").replace("&", ""), anonId);
-                                System.out.print(String.format("%-25s", "unzipping..."));
-                                Files.copy(zipFile.getInputStream(zipEntry), new File(svsFileName).toPath(), StandardCopyOption.REPLACE_EXISTING);
-                                System.out.println(String.format("unzipped to: %s", svsFileName));
-                                slide.anonSlideId = anonId;
-                                heartBxPatients.xmlMarshal("c:\\heart_bx\\heart_bx");
+                        if(slideJson.getBoolean("isViewable")) {
+                            HttpRequest requestDetails = HttpRequest.newBuilder()
+                              .uri(URI.create(String.format(url + "/SectraPathologyServer/api/slides/%s/details", slideJson.getString("id"))))
+                              .setHeader("content-type", "application/x-www-form-urlencoded; charset=UTF-8")
+                              .GET()
+                              .build();
+                            HttpResponse<String> responseDetails = client.send(requestDetails, HttpResponse.BodyHandlers.ofString());
+                            JSONObject joDetails = new JSONObject(responseDetails.body());
+                            System.out.println("slide is in short term storage (STS) and/or direct archive access (DAA)");
+                            slideFound = true;
+                            System.out.println(String.format(url + "/SectraPathologyServer/slides/%s/files?requestId=%s&anonymize=%s", slideJson.getString("id"), accNo, anon ? "true" : "false"));
+                            System.out.print(String.format("%-25s", "downloading ZIP..."));
+                            HttpRequest requestDownload = HttpRequest.newBuilder()
+                              .uri(URI.create(String.format(url + "/SectraPathologyServer/slides/%s/files?requestId=%s&anonymize=%s", slideJson.getString("id"), accNo, anon ? "true" : "false")))
+                              .build();
+                            HttpResponse<Path> responseDownload = client.send(requestDownload, HttpResponse.BodyHandlers.ofFileDownload(
+                                Path.of("."), 
+                                StandardOpenOption.WRITE,
+                                StandardOpenOption.CREATE
+                            ));
+                            System.out.println(String.format("downloaded to: %s", responseDownload.body().getFileName()));
+                            ZipFile zipFile = new ZipFile(responseDownload.body().toFile());
+                            for(Iterator iterZipEntries = zipFile.entries().asIterator(); iterZipEntries.hasNext(); ) {
+                                ZipEntry zipEntry = (ZipEntry)iterZipEntries.next();
+                                if(zipEntry.getName().endsWith(".svs")) {
+                                    String anonId = responseDownload.body().getFileName().toString().replaceAll(".zip$", "").replaceAll("^ANON", "");
+                                    String stainAbridged = slide.stain.replace(" ", "_").replace("&", "").replace("-", "");
+                                    stainAbridged = stainAbridged.substring(0, Math.min(10, stainAbridged.length()));
+                                    String svsFileName = String.format("%s-%s-%s%02d-%02d-%s-%s.svs", patient.patIdHash.substring(0, 8), sdf.format(case_.collectionDate), slide.partId, slide.blockNo, slide.slideNo, stainAbridged, anonId);
+                                    System.out.print(String.format("%-25s", "unzipping..."));
+                                    Files.copy(zipFile.getInputStream(zipEntry), new File(svsFileName).toPath(), StandardCopyOption.REPLACE_EXISTING);
+                                    System.out.println(String.format("unzipped to: %s", svsFileName));
+                                    slide.anonSlideId = anonId;
+                                    slide.anonSlideFileName = svsFileName;
+                                    heartBxPatients.xmlMarshal("heart_bx");
+                                }
                             }
+                            zipFile.close();
+                            System.out.print(String.format("%-25s", "deleting ZIP..."));
+                            responseDownload.body().toFile().delete();
+                            System.out.println("ZIP deleted");
                         }
-                        zipFile.close();
-                        System.out.print(String.format("%-25s", "deleting ZIP..."));
-                        responseDownload.body().toFile().delete();
-                        System.out.println("ZIP deleted");
+                        else {
+                            System.out.println("slide is not in short term storage (STS) or direct archive access (DAA) - recall from archive required");
+                        }
                     }
                 }
             }
 
             if(!slideFound) {
-                System.out.println(String.format("slide \"%s\" not found", slideId));
+                System.out.println(String.format("slide \"%s\" ERROR", slideId));
                 logout(url, client);
-                System.exit(1);
+                continue;
             }
             
             logout(url, client);
