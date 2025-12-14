@@ -24,6 +24,8 @@ public class Case implements Comparable<Object> {
     public String accNoHash;
     @XmlAttribute
     public Date collectionDate;
+    @XmlAttribute
+    public Date recallInitiatedDate;
     @XmlTransient
     public Map<String, Slide> slideMap = new TreeMap<>();
     @XmlElementWrapper(name = "slides")
