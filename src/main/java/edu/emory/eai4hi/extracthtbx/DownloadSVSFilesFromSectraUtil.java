@@ -28,6 +28,15 @@ import java.util.zip.ZipFile;
 import org.json.JSONObject;
 
 /**
+ * I recommend performing this function in a SAN file system (e.g., Fibre
+ * Channel) and NOT in a NAS file system (e.g., SMB/CIFS) unless the NAS is
+ * very fast. In general, performance is much better, particularly the unzip
+ * operation, on a SAN. If necessary to avoid running out of SAN file system,
+ * start a concurrent file move thread as a separate parallel process, for
+ * example in Windows PowerShell this will copy all SVS files in the
+ * current directory that are at least 5 minutes old to another directory:
+ * 
+ * while ($true) { Get-ChildItem -Path "." -Filter "*.svs" | Where-Object { $_.LastWriteTime -lt (Get-Date).AddMinutes(-5) } | Move-Item -Verbose -Destination s: ; echo "Waiting 60 seconds..." ; Start-Sleep -Seconds 60 ; }
  *
  * @author geoffrey.smith@emory.edu
  */
@@ -55,12 +64,25 @@ public class DownloadSvsFilesFromSectraUtil {
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
         
+        String startSlideId = args.length >= 2 ? args[1] : null;
+        boolean startSlideIdFound = false;
+        
         for(Patient patient : heartBxPatients.patients) { for(Case case_ : patient.cases) { for(Slide slide : case_.slides) {
 
             String accNo = case_.accNo;
             String slideId = String.format("%s-%s%d-%d", case_.accNo, slide.partId, slide.blockNo, slide.slideNo);
 
             System.out.println(String.format("processing slide %s", slideId));
+
+            if(startSlideId != null && !startSlideIdFound) {
+                startSlideIdFound = startSlideId.equals(slideId);
+                if(!startSlideIdFound) { continue; }
+            }
+
+            if(slide.anonSlideFileName != null && slide.anonSlideFileName.length() > 0) {
+                System.out.println("skipping (already downloaded)");
+                continue;
+            }
             
             // LOGIN
             {

@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- *
+ * 
  * @author geoffrey.smith@emory.edu
  */
 public class PatientCaseSlideFinder {
@@ -31,7 +31,7 @@ public class PatientCaseSlideFinder {
         Connection connClr = DriverManager.getConnection("jdbc:sqlserver://prd-clar-lsnr.eushc.org;database=Clarity;integratedSecurity=true;");
 
         PreparedStatement pstmt = connClr.prepareStatement("""
-            select top 30
+            select
               lcdm.case_id [caseId],
               lcdm.case_pat_id [patId],
               convert(varchar(32), hashbytes('MD5', ? + lcdm.case_pat_id), 2) [patIdHash],
