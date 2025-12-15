@@ -4,7 +4,6 @@ import edu.emory.eai4hi.extracthtbx.data.Case;
 import edu.emory.eai4hi.extracthtbx.data.HeartBxPatients;
 import edu.emory.eai4hi.extracthtbx.data.Patient;
 import edu.emory.eai4hi.extracthtbx.data.Slide;
-import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,23 +14,18 @@ import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
+import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.Properties;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 import org.json.JSONObject;
 
 /**
  *
  * @author geoffrey.smith@emory.edu
  */
-public class InitiateArchiveRecall {
+public class InitiateArchiveRecallUtil {
 
     public static void main(String[] args) throws Exception {
 
@@ -53,6 +47,9 @@ public class InitiateArchiveRecall {
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
         
+        String startSlideId = args.length >= 2 ? args[1] : null;
+        boolean startSlideIdFound = false;
+        
         for(Patient patient : heartBxPatients.patients) { for(Case case_ : patient.cases) { for(Slide slide : case_.slides) {
 
             String accNo = case_.accNo;
@@ -60,9 +57,9 @@ public class InitiateArchiveRecall {
 
             System.out.println(String.format("processing slide %s", slideId));
 
-            if(case_.recallInitiatedDate != null) {
-                System.out.println("skipping (case recall already initiated)");
-                continue;
+            if(startSlideId != null && !startSlideIdFound) {
+                startSlideIdFound = startSlideId.equals(slideId);
+                if(!startSlideIdFound) { continue; }
             }
 
             if(slide.anonSlideFileName != null && slide.anonSlideFileName.length() > 0) {
@@ -70,6 +67,11 @@ public class InitiateArchiveRecall {
                 continue;
             }
             
+            if(case_.recallInitiatedDate != null) {
+                System.out.println("skipping (case recall already initiated)");
+                continue;
+            }
+
             // LOGIN
             {
                 HttpRequest request = HttpRequest.newBuilder()
@@ -176,12 +178,12 @@ public class InitiateArchiveRecall {
                         ));
                         if(!slideJson.getBoolean("isViewable") && "offline".equals(slideJson.isNull("archived") ? null : slideJson.getString("archived"))) {
                             slideFound = true;
-                            System.out.println("Initiating recall in 60 secondes...");
-                            Thread.sleep(60000);
+                            System.out.println("Initiating recall in 20 seconds...");
+                            Thread.sleep(20000);
                             HttpRequest requestRecall = HttpRequest.newBuilder()
                               .uri(URI.create(url + "/SectraPathologyServer/api/requests/retrieve"))
-                              .setHeader("content-type", "application/x-www-form-urlencoded; charset=UTF-8")
-                              .POST(HttpRequest.BodyPublishers.ofString(String.format("%s", case_.accNo)))
+                              .setHeader("content-type", "application/json")
+                              .POST(HttpRequest.BodyPublishers.ofString(String.format("\"%s\"", case_.accNo)))
                               .build();
                             HttpResponse<String> responseRecall = client.send(requestRecall, HttpResponse.BodyHandlers.ofString());
                             System.out.println(String.format("...recall initiated (status code = %d).", responseRecall.statusCode()));
@@ -190,6 +192,8 @@ public class InitiateArchiveRecall {
                         }
                         else {
                             System.out.println("slide is not offline (recall not required)");
+                            case_.recallInitiatedDate = new SimpleDateFormat("yyyy-MM-dd").parse("2000-01-01");
+                            heartBxPatients.xmlMarshal("heart_bx");
                         }
                     }
                 }
