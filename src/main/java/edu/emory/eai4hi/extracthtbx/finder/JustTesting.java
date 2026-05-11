@@ -17,11 +17,8 @@ import java.util.TreeMap;
  * 
  * @author geoffrey.smith@emory.edu
  */
-public class PatientCaseSlideFinder {
+public class JustTesting {
 
-    static Connection connClrGlobal;
-    static PreparedStatement pstmtGlobal;
-    
     // MD5 hash salt for identifiers - change before running for production purposes
     //private final static String HASH_SALT = "981DE517FC8E2AA95E3570BD3C54CFAA";
     private final static String HASH_SALT = "moohaha100!";
@@ -35,7 +32,7 @@ public class PatientCaseSlideFinder {
         Connection connClr = DriverManager.getConnection("jdbc:sqlserver://prd-clar-lsnr.eushc.org;database=Clarity;integratedSecurity=true;");
 
         PreparedStatement pstmt = connClr.prepareStatement("""
-            select
+            select top 10
               lcdm.case_id [caseId],
               lcdm.case_pat_id [patId],
               convert(varchar(32), hashbytes('MD5', ? + lcdm.case_pat_id), 2) [patIdHash],
@@ -101,34 +98,12 @@ public class PatientCaseSlideFinder {
         return patientMap;
         
     }
- 
-    public static String getPatientMrn(String patId) throws ClassNotFoundException, ParseException, SQLException {
-
-        if(connClrGlobal == null) {
-            Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
-            // integrated security requires sqljdbc_auth.dll on -Djava.library.path
-            connClrGlobal = DriverManager.getConnection("jdbc:sqlserver://prd-clar-lsnr.eushc.org;database=Clarity;integratedSecurity=true;");
-            pstmtGlobal = connClrGlobal.prepareStatement("""
-                select
-                  pat_mrn_id
-                from
-                  patient
-                where
-                  pat_id = ?""");
+    
+    public static void main(String[] args) throws ClassNotFoundException, ParseException, ParseException, SQLException {
+        Map<String, Patient> patientMap = getPatientMap();
+        for(Patient patient : patientMap.values()) {
+            System.out.println(patient.patId + patient.patIdHash);
         }
-        
-        pstmtGlobal.clearParameters();
-        pstmtGlobal.setString(1, patId);
-        
-        String patMrnId;
-        try (ResultSet rs = pstmtGlobal.executeQuery()) {
-            if(!rs.next()) { throw new RuntimeException("no matching patient"); }
-            patMrnId = rs.getString("pat_mrn_id");
-            if(rs.next()) { throw new RuntimeException("too many matching patients"); }
-        }
-        
-        return patMrnId;
-        
     }
-
+ 
 }

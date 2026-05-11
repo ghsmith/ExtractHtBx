@@ -17,10 +17,12 @@ import java.util.TreeSet;
 @XmlRootElement
 public class Patient implements Comparable<Object> {
   
-    @XmlAttribute
+    @XmlTransient
     public String patId;
     @XmlAttribute
     public String patIdHash;
+    @XmlAttribute
+    public String mrn;
     @XmlTransient
     public Map<String, Case> caseMap = new TreeMap<>();
     @XmlElementWrapper(name = "cases")
