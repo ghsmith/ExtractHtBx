@@ -6,6 +6,7 @@ import edu.emory.eai4hi.extracthtbx.data.Patient;
 import edu.emory.eai4hi.extracthtbx.data.Slide;
 import edu.emory.eai4hi.extracthtbx.finder.PatientCaseSlideFinder;
 import java.util.Arrays;
+import java.util.Date;
 
 /**
  *
@@ -15,22 +16,38 @@ public class AddMrnUtil {
     
     public static void main(String[] args) throws Exception {
 
-        edu.emory.eai4hi.extracthtbx.data.HeartBxPatients heartBxPatients;
-        heartBxPatients = edu.emory.eai4hi.extracthtbx.data.HeartBxPatients.xmlUnmarshal("heart_bx2");
-        HeartBxPatients heartBxPatientsFiltered = new HeartBxPatients();
+/*        edu.emory.eai4hi.extracthtbx.data.HeartBxPatients heartBxPatients;
+        heartBxPatients = edu.emory.eai4hi.extracthtbx.data.HeartBxPatients.xmlUnmarshal("heart_bx");
+        //int x = 0;
         for(Patient patient : heartBxPatients.patients) {
-            System.out.println(patient.patId);
-            if(Arrays.asList(new String[] { "1882353", "8236908", "18711695", "7172213", "11293856", "7363178", "1657908" }).contains(patient.mrn)) {
-                System.out.println("hit!");
-                heartBxPatientsFiltered.patients.add(patient);
-            }
             for(Case case_ : patient.cases) {
+                System.out.println(case_.accNo);
+                String[] dx = PatientCaseSlideFinder.getDx(case_.accNo);
+                case_.finalDx = dx[0] != null ? dx[0].replace("<br/>", "\n") : "";
+                case_.addendumDx = dx[1] != null ? dx[1].replace("<br/>", "\n") : "";
+                //if(x++ > 5) { break; }
                 for(Slide slide : case_.slides) {
                 }
             }
+            //if(x > 5) { break; }
         }
-        heartBxPatientsFiltered.xmlMarshal("heart_bx_enrolled_20260131");
-        
+        heartBxPatients.xmlMarshal("heart_bx_with_dx");*/
+
+        {
+            edu.emory.eai4hi.extracthtbx.data.HeartBxPatients heartBxPatients;
+            heartBxPatients = edu.emory.eai4hi.extracthtbx.data.HeartBxPatients.xmlUnmarshal("heart_bx_with_dx");
+            for(Patient patient : heartBxPatients.patients) {
+                Date collectionDateBase = null;
+                for(Case case_ : patient.cases) {
+                    if(collectionDateBase == null) { collectionDateBase = case_.collectionDate; }
+                    case_.collectionDayDelta = (case_.collectionDate.getTime() - collectionDateBase.getTime()) / (24L*60L*60L*1000L);
+                    for(Slide slide : case_.slides) {
+                    }
+                }
+            }
+            heartBxPatients.xmlMarshal("heart_bx_with_dx2");                
+
+        }
     }
     
 }

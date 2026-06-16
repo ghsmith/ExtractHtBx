@@ -131,4 +131,55 @@ public class PatientCaseSlideFinder {
         
     }
 
+    public static String[] getDx(String accNo) throws ClassNotFoundException, ParseException, SQLException {
+
+        if(connClrGlobal == null) {
+            Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
+            // integrated security requires sqljdbc_auth.dll on -Djava.library.path
+            //connClrGlobal = DriverManager.getConnection("jdbc:sqlserver://prd-clar-lsnr.eushc.org;database=Clarity;integratedSecurity=true;");
+            connClrGlobal = DriverManager.getConnection("jdbc:sqlserver://zhe2wpepclrd001.eushc.org;database=Clarity;integratedSecurity=true;");
+            pstmtGlobal = connClrGlobal.prepareStatement("""
+                  select
+                    string_agg(orcc.results_comp_cmt, '<br/>') within group(order by orcc.line_comp, orcc.line_comment)
+                  from
+                    (
+                      select
+                        max(rog.order_id) max_order_id
+                      from
+                        lab_case_info lci
+                        join req_order_group rog on(lci.requisition_id = rog.requisition_id)
+                      where
+                        lci.case_num = ?
+                    ) x
+                    join order_res_comp_cmt orcc on(max_order_id = orcc.order_id)
+                  where
+                    orcc.component_id = ?""");
+        }
+        
+        pstmtGlobal.clearParameters();
+        pstmtGlobal.setString(1, accNo);
+        pstmtGlobal.setInt(2, 180);
+        
+        String finalDx;
+        try (ResultSet rs = pstmtGlobal.executeQuery()) {
+            if(!rs.next()) { throw new RuntimeException("no matching patient"); }
+            finalDx = rs.getString(1);
+            if(rs.next()) { throw new RuntimeException("too many matching patients"); }
+        }
+        
+        pstmtGlobal.clearParameters();
+        pstmtGlobal.setString(1, accNo);
+        pstmtGlobal.setInt(2, 181);
+        
+        String addendumDx;
+        try (ResultSet rs = pstmtGlobal.executeQuery()) {
+            if(!rs.next()) { throw new RuntimeException("no matching patient"); }
+            addendumDx = rs.getString(1);
+            if(rs.next()) { throw new RuntimeException("too many matching patients"); }
+        }
+
+        return new String[] {finalDx, addendumDx};
+        
+    }
+
 }

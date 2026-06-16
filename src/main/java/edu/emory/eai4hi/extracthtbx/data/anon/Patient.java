@@ -19,7 +19,7 @@ public class Patient implements Comparable<Object> {
   
     @XmlTransient
     public String patId;
-    @XmlAttribute
+    @XmlAttribute(name = "patIdStudy")
     public String patIdHash;
     @XmlTransient
     public Map<String, Case> caseMap = new TreeMap<>();

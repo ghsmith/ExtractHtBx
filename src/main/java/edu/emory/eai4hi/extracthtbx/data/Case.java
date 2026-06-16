@@ -20,17 +20,24 @@ public class Case implements Comparable<Object> {
 
     @XmlAttribute
     public String accNo;
-    @XmlAttribute
+    @XmlAttribute(name = "accNoStudy")
     public String accNoHash;
     @XmlAttribute
     public Date collectionDate;
     @XmlAttribute
+    public long collectionDayDelta;
+    @XmlTransient
     public Date recallInitiatedDate;
     @XmlTransient
     public Map<String, Slide> slideMap = new TreeMap<>();
     @XmlElementWrapper(name = "slides")
     @XmlElement(name = "slide")
     public Set<Slide> slides = new TreeSet<>();
+
+    @XmlElement
+    public String finalDx;
+    @XmlElement
+    public String addendumDx;
     
     @Override
     public int compareTo(Object o) {
