@@ -36,8 +36,10 @@ public class Merge {
                             continue;
                         }
                         //System.out.println("found " + slideId);
-                        slide.anonSlideId = slideOld.anonSlideId;
-                        slide.anonSlideFileName = slideOld.anonSlideFileName;
+                        if(slideOld.anonSlideId != null) {
+                            slide.anonSlideId = slideOld.anonSlideId;
+                            slide.anonSlideFileName = slideOld.anonSlideFileName;
+                        }
                     }
                     else {
                         String stainAbridged = slide.stain.replace(" ", "_").replace("&", "").replace("-", "").replace("/", "");
