@@ -17,7 +17,7 @@ import java.util.TreeSet;
 @XmlRootElement
 public class Patient implements Comparable<Object> {
   
-    @XmlTransient
+    @XmlAttribute
     public String patId;
     @XmlAttribute(name = "patIdStudy")
     public String patIdHash;

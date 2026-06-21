@@ -57,6 +57,7 @@ public class DownloadSvsFilesFromSectraUtil {
         String url = prop.getProperty("url");
         String u = prop.getProperty("u");
         String p = prop.getProperty("p");
+        String domain = prop.getProperty("d") != null ? prop.getProperty("d") : "";
         
         CookieHandler.setDefault(new CookieManager());
         HttpClient client = HttpClient.newBuilder()
@@ -67,7 +68,9 @@ public class DownloadSvsFilesFromSectraUtil {
         String startSlideId = args.length >= 2 ? args[1] : null;
         boolean startSlideIdFound = false;
         
-        for(Patient patient : heartBxPatients.patients) { for(Case case_ : patient.cases) { for(Slide slide : case_.slides) {
+        for(Patient patient : heartBxPatients.patients) { for(Case case_ : patient.cases) {
+        if(case_.collectionDate.compareTo(sdf.parse("20251201")) < 0) { continue; }
+        for(Slide slide : case_.slides) {
 
             String accNo = case_.accNo;
             String slideId = String.format("%s-%s%d-%d", case_.accNo, slide.partId, slide.blockNo, slide.slideNo);
@@ -89,7 +92,7 @@ public class DownloadSvsFilesFromSectraUtil {
                 HttpRequest request = HttpRequest.newBuilder()
                   .uri(URI.create(url + "/uniview/Logon.ashx"))
                   .setHeader("content-type", "application/x-www-form-urlencoded; charset=UTF-8")
-                  .POST(HttpRequest.BodyPublishers.ofString(String.format("{\"Domain\":\"\",\"Password\":\"%s\",\"UserName\":\"%s\"}", p, u)))
+                  .POST(HttpRequest.BodyPublishers.ofString(String.format("{\"Domain\":\"%s\",\"Password\":\"%s\",\"UserName\":\"%s\",\"AutoselectLastAssignment\":true}", domain, p, u)))
                   .build();
                 HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
                 if(response == null || response.statusCode() != 200) {

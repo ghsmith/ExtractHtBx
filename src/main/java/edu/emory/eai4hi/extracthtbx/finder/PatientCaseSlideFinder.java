@@ -20,7 +20,8 @@ import java.util.TreeMap;
 public class PatientCaseSlideFinder {
 
     static Connection connClrGlobal;
-    static PreparedStatement pstmtGlobal;
+    static PreparedStatement pstmtGlobal1;
+    static PreparedStatement pstmtGlobal2;
     
     // MD5 hash salt for identifiers - change before running for production purposes
     //private final static String HASH_SALT = "981DE517FC8E2AA95E3570BD3C54CFAA";
@@ -32,7 +33,8 @@ public class PatientCaseSlideFinder {
 
         Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
         // integrated security requires sqljdbc_auth.dll on -Djava.library.path
-        Connection connClr = DriverManager.getConnection("jdbc:sqlserver://prd-clar-lsnr.eushc.org;database=Clarity;integratedSecurity=true;");
+        //Connection connClr = DriverManager.getConnection("jdbc:sqlserver://prd-clar-lsnr.eushc.org;database=Clarity;integratedSecurity=true;");
+        Connection connClr = DriverManager.getConnection("jdbc:sqlserver://zhe2wpepclrd001.eushc.org;database=Clarity;integratedSecurity=true;");
 
         PreparedStatement pstmt = connClr.prepareStatement("""
             select
@@ -67,7 +69,8 @@ public class PatientCaseSlideFinder {
               and stl.task_inst is not null
               and stl.task_action_c = 3
               and zcf.abbr = 'DP-Ht Bx'
-              and lcdm.case_coll_dttm < '2025-12-01'
+              /*and lcdm.case_coll_dttm < '2025-12-01'*/
+              and lcdm.case_coll_dttm < '2026-06-01'
             order by
               lcdm.case_pat_id,
               lcdm.case_id,
@@ -104,11 +107,12 @@ public class PatientCaseSlideFinder {
  
     public static String getPatientMrn(String patId) throws ClassNotFoundException, ParseException, SQLException {
 
-        if(connClrGlobal == null) {
+        if(pstmtGlobal1 == null) {
             Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
             // integrated security requires sqljdbc_auth.dll on -Djava.library.path
-            connClrGlobal = DriverManager.getConnection("jdbc:sqlserver://prd-clar-lsnr.eushc.org;database=Clarity;integratedSecurity=true;");
-            pstmtGlobal = connClrGlobal.prepareStatement("""
+            //connClrGlobal = DriverManager.getConnection("jdbc:sqlserver://prd-clar-lsnr.eushc.org;database=Clarity;integratedSecurity=true;");
+            connClrGlobal = DriverManager.getConnection("jdbc:sqlserver://zhe2wpepclrd001.eushc.org;database=Clarity;integratedSecurity=true;");
+            pstmtGlobal1 = connClrGlobal.prepareStatement("""
                 select
                   pat_mrn_id
                 from
@@ -117,14 +121,14 @@ public class PatientCaseSlideFinder {
                   pat_id = ?""");
         }
         
-        pstmtGlobal.clearParameters();
-        pstmtGlobal.setString(1, patId);
+        pstmtGlobal1.clearParameters();
+        pstmtGlobal1.setString(1, patId);
         
         String patMrnId;
-        try (ResultSet rs = pstmtGlobal.executeQuery()) {
-            if(!rs.next()) { throw new RuntimeException("no matching patient"); }
+        try (ResultSet rs = pstmtGlobal1.executeQuery()) {
+            if(!rs.next()) { throw new RuntimeException("no matching patient " + patId); }
             patMrnId = rs.getString("pat_mrn_id");
-            if(rs.next()) { throw new RuntimeException("too many matching patients"); }
+            if(rs.next()) { throw new RuntimeException("too many matching patients " + patId); }
         }
         
         return patMrnId;
@@ -133,12 +137,12 @@ public class PatientCaseSlideFinder {
 
     public static String[] getDx(String accNo) throws ClassNotFoundException, ParseException, SQLException {
 
-        if(connClrGlobal == null) {
+        if(pstmtGlobal2 == null) {
             Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
             // integrated security requires sqljdbc_auth.dll on -Djava.library.path
             //connClrGlobal = DriverManager.getConnection("jdbc:sqlserver://prd-clar-lsnr.eushc.org;database=Clarity;integratedSecurity=true;");
             connClrGlobal = DriverManager.getConnection("jdbc:sqlserver://zhe2wpepclrd001.eushc.org;database=Clarity;integratedSecurity=true;");
-            pstmtGlobal = connClrGlobal.prepareStatement("""
+            pstmtGlobal2 = connClrGlobal.prepareStatement("""
                   select
                     string_agg(orcc.results_comp_cmt, '<br/>') within group(order by orcc.line_comp, orcc.line_comment)
                   from
@@ -156,26 +160,26 @@ public class PatientCaseSlideFinder {
                     orcc.component_id = ?""");
         }
         
-        pstmtGlobal.clearParameters();
-        pstmtGlobal.setString(1, accNo);
-        pstmtGlobal.setInt(2, 180);
+        pstmtGlobal2.clearParameters();
+        pstmtGlobal2.setString(1, accNo);
+        pstmtGlobal2.setInt(2, 180);
         
         String finalDx;
-        try (ResultSet rs = pstmtGlobal.executeQuery()) {
-            if(!rs.next()) { throw new RuntimeException("no matching patient"); }
+        try (ResultSet rs = pstmtGlobal2.executeQuery()) {
+            if(!rs.next()) { throw new RuntimeException("no matching case " + accNo); }
             finalDx = rs.getString(1);
-            if(rs.next()) { throw new RuntimeException("too many matching patients"); }
+            if(rs.next()) { throw new RuntimeException("too many matching case " + accNo); }
         }
         
-        pstmtGlobal.clearParameters();
-        pstmtGlobal.setString(1, accNo);
-        pstmtGlobal.setInt(2, 181);
+        pstmtGlobal2.clearParameters();
+        pstmtGlobal2.setString(1, accNo);
+        pstmtGlobal2.setInt(2, 181);
         
         String addendumDx;
-        try (ResultSet rs = pstmtGlobal.executeQuery()) {
-            if(!rs.next()) { throw new RuntimeException("no matching patient"); }
+        try (ResultSet rs = pstmtGlobal2.executeQuery()) {
+            if(!rs.next()) { throw new RuntimeException("no matching case " + accNo); }
             addendumDx = rs.getString(1);
-            if(rs.next()) { throw new RuntimeException("too many matching patients"); }
+            if(rs.next()) { throw new RuntimeException("too many matching case " + accNo); }
         }
 
         return new String[] {finalDx, addendumDx};
