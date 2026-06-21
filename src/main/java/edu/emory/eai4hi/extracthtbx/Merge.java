@@ -39,6 +39,13 @@ public class Merge {
                         slide.anonSlideId = slideOld.anonSlideId;
                         slide.anonSlideFileName = slideOld.anonSlideFileName;
                     }
+                    else {
+                        String stainAbridged = slide.stain.replace(" ", "_").replace("&", "").replace("-", "").replace("/", "");
+                        stainAbridged = stainAbridged.substring(0, Math.min(10, stainAbridged.length()));
+                        String correctSvsFileName = String.format("%s-%s-%s%02d-%02d-%s-%s.svs", patient.patIdHash.substring(0, 8), case_.accNoHash.substring(0, 8), slide.partId, slide.blockNo, slide.slideNo, stainAbridged, slide.anonSlideId);
+                        System.out.println(String.format("rename \"%s\" \"%s\"", slide.anonSlideFileName, correctSvsFileName));
+                        slide.anonSlideFileName = correctSvsFileName;
+                    }
                 }
             }
         }

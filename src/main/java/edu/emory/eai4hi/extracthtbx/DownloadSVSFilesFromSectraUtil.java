@@ -217,9 +217,9 @@ public class DownloadSvsFilesFromSectraUtil {
                                 ZipEntry zipEntry = (ZipEntry)iterZipEntries.next();
                                 if(zipEntry.getName().endsWith(".svs")) {
                                     String anonId = responseDownload.body().getFileName().toString().replaceAll(".zip$", "").replaceAll("^ANON", "");
-                                    String stainAbridged = slide.stain.replace(" ", "_").replace("&", "").replace("-", "");
+                                    String stainAbridged = slide.stain.replace(" ", "_").replace("&", "").replace("-", "").replace("/", "");
                                     stainAbridged = stainAbridged.substring(0, Math.min(10, stainAbridged.length()));
-                                    String svsFileName = String.format("%s-%s-%s%02d-%02d-%s-%s.svs", patient.patIdHash.substring(0, 8), sdf.format(case_.collectionDate), slide.partId, slide.blockNo, slide.slideNo, stainAbridged, anonId);
+                                    String svsFileName = String.format("%s-%s-%s%02d-%02d-%s-%s.svs", patient.patIdHash.substring(0, 8), case_.accNoHash.substring(0, 8), slide.partId, slide.blockNo, slide.slideNo, stainAbridged, anonId);
                                     System.out.print(String.format("%-25s", "unzipping..."));
                                     Files.copy(zipFile.getInputStream(zipEntry), new File(svsFileName).toPath(), StandardCopyOption.REPLACE_EXISTING);
                                     System.out.println(String.format("unzipped to: %s", svsFileName));
